@@ -4,7 +4,7 @@ Please click [this link](https://docs.google.com/presentation/d/1r3zxEd6IXVXq7_p
 # Usage
 To start working on this assignment, you should clone this repository into your local machine by using the following command.
 
-    git clone https://github.com/DLCV-Fall-2024/hw1-<username>.git
+    git clone https://github.com/DLCV-Fall-2024/dlcv-fall-2024-hw1-<username>.git
 Note that you should replace `<username>` with your own GitHub username.
 
 # Submission Rules
