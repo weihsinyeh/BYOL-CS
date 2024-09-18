@@ -3,25 +3,27 @@ import torch
 import torch.nn.functional as F
 import torchvision
 from torch.utils.data.dataloader import DataLoader
-
-from utils.utility import _create_model_training_folder
-
+from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
+import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 class BYOLTrainer:
     def __init__(self, online_network, target_network, predictor, optimizer, device, **params):
         self.online_network = online_network
         self.target_network = target_network
         self.optimizer = optimizer
+        self.summary_writer = SummaryWriter(os.path.join(params['logdir'], 'train_logs'))
         self.device = device
         self.predictor = predictor
-        self.max_epochs = params['max_epochs']
-        
-        self.m = params['m']
+
+        # trainer
         self.batch_size = params['batch_size']
-        self.num_workers = params['num_workers']
+        self.m = params['m']
         self.checkpoint_interval = params['checkpoint_interval']
+        self.max_epochs = params['max_epochs']
         self.checkpoint_dir = params['checkpointdir']
-        _create_model_training_folder(files_to_same=["./config/config.yaml", "main.py", 'trainer.py'])
 
     @torch.no_grad()
     def _update_target_network_parameters(self):
@@ -44,31 +46,19 @@ class BYOLTrainer:
             param_k.requires_grad = False  # not update by gradient
 
     def train(self, train_dataset):
-
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
-                                  num_workers=self.num_workers, drop_last=False, shuffle=True)
-
         niter = 0
         model_checkpoints_folder = os.path.join(self.checkpoint_dir, 'checkpoints')
 
         self.initializes_target_network()
-        print(train_loader)
-        for epoch_counter in range(self.max_epochs):
-
-            for (batch_view_1, batch_view_2), _ in train_loader:
-
+        train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
+                                  num_workers=1, drop_last=False, shuffle=True)
+        for epoch in range(self.max_epochs):
+            loss_list = []
+            for (batch_view_1, batch_view_2), _ in tqdm(train_loader):
                 batch_view_1 = batch_view_1.to(self.device)
                 batch_view_2 = batch_view_2.to(self.device)
 
-                if niter == 0:
-                    grid = torchvision.utils.make_grid(batch_view_1[:32])
-                    self.writer.add_image('views_1', grid, global_step=niter)
-
-                    grid = torchvision.utils.make_grid(batch_view_2[:32])
-                    self.writer.add_image('views_2', grid, global_step=niter)
-
                 loss = self.update(batch_view_1, batch_view_2)
-                self.writer.add_scalar('loss', loss, global_step=niter)
 
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -76,12 +66,15 @@ class BYOLTrainer:
 
                 self._update_target_network_parameters()  # update the key encoder
                 niter += 1
+                loss_list.append(loss.item())
 
-            print("End of epoch {}".format(epoch_counter))
+            if epoch % 1 == 0:
+                checkpoint_name = 'model_epoch' + str(epoch) + '.pth'
+                self.save_model(os.path.join(model_checkpoints_folder, checkpoint_name))
+            self.summary_writer.add_scalar('train/loss', np.mean(loss_list), epoch)
+            logger.info(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
+            print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
 
-        # save checkpoints
-        checkpoint_name = 'model_' + str(epoch_counter) + '.pth'
-        self.save_model(os.path.join(model_checkpoints_folder, checkpoint_name))
 
     def update(self, batch_view_1, batch_view_2):
         # compute query feature

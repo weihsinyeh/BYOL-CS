@@ -17,24 +17,25 @@ torch.manual_seed(0)
 def main():
     config = {
         # projection head
-        "mlp_hidden_size": 512,
-        "projection_size": 128,
+        "mlp_hidden_size"   : 512,
+        "projection_size"   : 128,
         # data transform
-        "data_s": 1,
-        "input_shape": (128,128,3),
+        "data_s"            : 1,
+        "input_shape"       : (128,128,3),
         # trainer
-        "batch_size": 64,
-        "m": 0.996, # momentum update
-        "checkpoint_interval": 5000,
-        "max_epochs": 40,
-        "num_workers": 4,
+        "batch_size"        : 64,
+        "m"                 : 0.996, # momentum update
+        "checkpoint_interval": 5,
+        "max_epochs"        : 2,
+
         # optimizer
-        "lr": 0.03,
-        "momentum": 0.9,
-        "weight_decay": 0.0004,
+        "lr"                : 0.03,
+        "momentum"          : 0.9,
+        "weight_decay"      : 0.0004,
         # path
-        "data_dir" : './hw1_data',
-        "checkpointdir" : './hw1'
+        "data_dir"          : './hw1_data/p1_data/mini',
+        "checkpointdir"     : './hw1',
+        "logdir"            : './hw1/logdir'
     }
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -43,11 +44,9 @@ def main():
     data_transform = get_simclr_data_transforms(config['input_shape'],s = config['data_s'])
 
     dataset = datasets.ImageFolder(root = config['data_dir'], transform=MultiViewDataInjector([data_transform, data_transform]))
-    train_dataset = DataLoader(dataset, split = 'train+unlabeled', batch_size=32)
 
     # online network
     online_network = ResNet50(**config).to(device)
-
 
     # predictor network
     predictor = MLPHead(in_channels=online_network.projetion.net[-1].out_features, 
@@ -59,16 +58,15 @@ def main():
 
     optimizer = torch.optim.SGD(list(online_network.parameters()) + list(predictor.parameters()),
                                 lr = config['lr'], momentum = config['momentum'], weight_decay = config['weight_decay'])
-
+    
     trainer = BYOLTrainer(online_network=online_network,
                           target_network=target_network,
                           optimizer=optimizer,
                           predictor=predictor,
                           device=device,
                           **config)
-
-    trainer.train(train_dataset)
-
+    
+    trainer.train(dataset)
 
 if __name__ == '__main__':
     main()

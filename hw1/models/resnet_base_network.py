@@ -7,7 +7,6 @@ class ResNet50(torch.nn.Module):
     def __init__(self, **args):
         super(ResNet50, self).__init__()
         resnet = models.resnet50(pretrained=False)
-        print(args)
         self.encoder = torch.nn.Sequential(*list(resnet.children())[:-1])
         self.projetion = MLPHead(in_channels=resnet.fc.in_features, 
                                  mlp_hidden_size = args['mlp_hidden_size'],

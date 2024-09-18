@@ -1,6 +1,5 @@
 from torchvision.transforms import transforms
 
-
 class MultiViewDataInjector(object):
     def __init__(self, *args):
         self.transforms = args[0]
