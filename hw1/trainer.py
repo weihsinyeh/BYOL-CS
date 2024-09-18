@@ -1,125 +1,106 @@
+import os
 import torch
-import torch.distributed as dist
-from torch.nn import Module
-from torch.nn import SyncBatchNorm
-from pathlib import Path
-from torch.optim import Optimizer, Adam
-from torch.utils.data import Dataset, DataLoader
-from hw1.byol_pytorch import BYOL
+import torch.nn.functional as F
+import torchvision
+from torch.utils.data.dataloader import DataLoader
 
-# functions
+from utils.utility import _create_model_training_folder
 
-def exists(v):
-    return v is not None
 
-def cycle(dl):
-    while True:
-        for batch in dl:
-            yield batch
+class BYOLTrainer:
+    def __init__(self, online_network, target_network, predictor, optimizer, device, **params):
+        self.online_network = online_network
+        self.target_network = target_network
+        self.optimizer = optimizer
+        self.device = device
+        self.predictor = predictor
+        self.max_epochs = params['max_epochs']
+        
+        self.m = params['m']
+        self.batch_size = params['batch_size']
+        self.num_workers = params['num_workers']
+        self.checkpoint_interval = params['checkpoint_interval']
+        self.checkpoint_dir = params['checkpointdir']
+        _create_model_training_folder(files_to_same=["./config/config.yaml", "main.py", 'trainer.py'])
 
-# class
+    @torch.no_grad()
+    def _update_target_network_parameters(self):
+        """
+        Momentum update of the key encoder
+        """
+        for param_q, param_k in zip(self.online_network.parameters(), self.target_network.parameters()):
+            param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
 
-class Dataset(Dataset):
-    def __init__(self, image_size, length):
-        self.length = length
-        self.image_size = image_size
+    @staticmethod
+    def regression_loss(x, y):
+        x = F.normalize(x, dim=1)
+        y = F.normalize(y, dim=1)
+        return 2 - 2 * (x * y).sum(dim=-1)
 
-    def __len__(self):
-        return self.length
+    def initializes_target_network(self):
+        # init momentum network as encoder net
+        for param_q, param_k in zip(self.online_network.parameters(), self.target_network.parameters()):
+            param_k.data.copy_(param_q.data)  # initialize
+            param_k.requires_grad = False  # not update by gradient
 
-    def __getitem__(self, idx):
-        return torch.randn(3, self.image_size, self.image_size)
+    def train(self, train_dataset):
 
-# main trainer
+        train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
+                                  num_workers=self.num_workers, drop_last=False, shuffle=True)
 
-class BYOLTrainer(Module):
-    def __init__(
-        self,
-        net: Module,
-        *,
-        image_size: int,
-        hidden_layer: str,
-        learning_rate: float,
-        dataset: Dataset,
-        num_train_steps: int,
-        batch_size: int = 16,
-        optimizer_klass = Adam,
-        checkpoint_every: int = 1000,
-        checkpoint_folder: str = './checkpoints',
-        byol_kwargs: dict = dict(),
-        optimizer_kwargs: dict = dict(),
-        accelerator_kwargs: dict = dict(),
-    ):
-        super().__init__()
+        niter = 0
+        model_checkpoints_folder = os.path.join(self.checkpoint_dir, 'checkpoints')
 
-        if dist.is_initialized() and dist.get_world_size() > 1:
-            net = SyncBatchNorm.convert_sync_batchnorm(net)
+        self.initializes_target_network()
+        print(train_loader)
+        for epoch_counter in range(self.max_epochs):
 
-        self.net = net
+            for (batch_view_1, batch_view_2), _ in train_loader:
 
-        self.byol = BYOL(net, image_size = image_size, hidden_layer = hidden_layer, **byol_kwargs)
+                batch_view_1 = batch_view_1.to(self.device)
+                batch_view_2 = batch_view_2.to(self.device)
 
-        self.optimizer = optimizer_klass(self.byol.parameters(), lr = learning_rate, **optimizer_kwargs)
+                if niter == 0:
+                    grid = torchvision.utils.make_grid(batch_view_1[:32])
+                    self.writer.add_image('views_1', grid, global_step=niter)
 
-        self.dataloader = DataLoader(dataset, shuffle = True, batch_size = batch_size)
+                    grid = torchvision.utils.make_grid(batch_view_2[:32])
+                    self.writer.add_image('views_2', grid, global_step=niter)
 
-        self.num_train_steps = num_train_steps
+                loss = self.update(batch_view_1, batch_view_2)
+                self.writer.add_scalar('loss', loss, global_step=niter)
 
-        self.checkpoint_every = checkpoint_every
-        self.checkpoint_folder = Path(checkpoint_folder)
-        self.checkpoint_folder.mkdir(exist_ok = True, parents = True)
-        assert self.checkpoint_folder.is_dir()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
-        # prepare with accelerate
+                self._update_target_network_parameters()  # update the key encoder
+                niter += 1
 
-        (
-            self.byol,
-            self.optimizer,
-            self.dataloader
-        ) = self.accelerator.prepare(
-            self.byol,
-            self.optimizer,
-            self.dataloader
-        )
+            print("End of epoch {}".format(epoch_counter))
 
-        self.register_buffer('step', torch.tensor(0))
+        # save checkpoints
+        checkpoint_name = 'model_' + str(epoch_counter) + '.pth'
+        self.save_model(os.path.join(model_checkpoints_folder, checkpoint_name))
 
-    def wait(self):
-        return self.accelerator.wait_for_everyone()
+    def update(self, batch_view_1, batch_view_2):
+        # compute query feature
+        predictions_from_view_1 = self.predictor(self.online_network(batch_view_1))
+        predictions_from_view_2 = self.predictor(self.online_network(batch_view_2))
 
-    def print(self, msg):
-        return self.accelerator.print(msg)
+        # compute key features
+        with torch.no_grad():
+            targets_to_view_2 = self.target_network(batch_view_1)
+            targets_to_view_1 = self.target_network(batch_view_2)
 
-    def forward(self):
-        step = self.step.item()
-        data_it = cycle(self.dataloader)
+        loss = self.regression_loss(predictions_from_view_1, targets_to_view_1)
+        loss += self.regression_loss(predictions_from_view_2, targets_to_view_2)
+        return loss.mean()
 
-        for _ in range(self.num_train_steps):
-            images = next(data_it)
+    def save_model(self, PATH):
 
-            with self.accelerator.autocast():
-                loss = self.byol(images)
-                self.accelerator.backward(loss)
-
-            self.print(f'loss {loss.item():.3f}')
-
-            self.optimizer.step()
-            self.optimizer.zero_grad()
-
-            self.wait()
-
-            self.byol.update_moving_average()
-
-            self.wait()
-
-            if not (step % self.checkpoint_every) and self.accelerator.is_main_process:
-                checkpoint_num = step // self.checkpoint_every
-                checkpoint_path = self.checkpoint_folder / f'checkpoint.{checkpoint_num}.pt'
-                torch.save(self.net.state_dict(), str(checkpoint_path))
-
-            self.wait()
-
-            step += 1
-
-        self.print('training complete')
-
+        torch.save({
+            'online_network_state_dict': self.online_network.state_dict(),
+            'target_network_state_dict': self.target_network.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+        }, PATH)
