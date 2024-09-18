@@ -26,7 +26,7 @@ def main():
         "batch_size"        : 64,
         "m"                 : 0.996, # momentum update
         "checkpoint_interval": 5,
-        "max_epochs"        : 2,
+        "max_epochs"        : 200,
 
         # optimizer
         "lr"                : 0.03,

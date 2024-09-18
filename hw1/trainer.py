@@ -7,6 +7,7 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import logging
+import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
 
 class BYOLTrainer:
@@ -54,9 +55,26 @@ class BYOLTrainer:
                                   num_workers=1, drop_last=False, shuffle=True)
         for epoch in range(self.max_epochs):
             loss_list = []
+            print("Epoch :",epoch)
             for (batch_view_1, batch_view_2), _ in tqdm(train_loader):
                 batch_view_1 = batch_view_1.to(self.device)
                 batch_view_2 = batch_view_2.to(self.device)
+
+                '''
+                image1 = batch_view_1[8].permute(1, 2, 0).cpu().numpy()
+                image2 = batch_view_2[8].permute(1, 2, 0).cpu().numpy()
+    
+                fig, axs = plt.subplots(1, 2, figsize=(10, 5)) 
+                axs[0].imshow(image1)
+                axs[0].axis('off')  
+                axs[0].set_title('Image 1')  
+
+                axs[1].imshow(image2)
+                axs[1].axis('off')  
+                axs[1].set_title('Image 2')  
+                plt.tight_layout()  
+                plt.show()
+                '''
 
                 loss = self.update(batch_view_1, batch_view_2)
 

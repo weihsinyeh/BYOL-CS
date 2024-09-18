@@ -7,3 +7,4 @@ hw1_data/*
 logdir
 *__pycache__
 checkpoints
+tmp
