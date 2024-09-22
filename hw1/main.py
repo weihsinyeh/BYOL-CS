@@ -24,15 +24,15 @@ def parse():
     # optimizer
     parser.add_argument('--lr',                 type=float, default=0.0005)
     # pretrained model path
-    parser.add_argument('--data_dir',           type=str,   default='./hw1_data/p1_data/mini/train')
-    parser.add_argument('--checkpointdir',      type=str,   default='./hw1/pretrain_checkpoints')
-    parser.add_argument('--logdir',             type=str,   default='./hw1/logdir')
+    parser.add_argument('--data_dir',           type=str,   default='/project/g/r13922043/hw1_data/p1_data/mini/train')
+    parser.add_argument('--checkpointdir',      type=str,   default='/project/g/r13922043/hw1/pretrain_checkpoints')
+    parser.add_argument('--logdir',             type=str,   default='/project/g/r13922043/hw1/logdir')
     # finetune path
-    parser.add_argument('--train_csv_file',     type=str,   default='./hw1_data/p1_data/office/train.csv')
-    parser.add_argument('--test_csv_file',      type=str,   default='./hw1_data/p1_data/office/val.csv')
-    parser.add_argument('--finetune_train_dir', type=str,   default='./hw1_data/p1_data/office/train')
-    parser.add_argument('--finetune_test_dir',  type=str,   default='./hw1_data/p1_data/office/val')
-    parser.add_argument('--finetune_checkpoint',type=str,   default='./hw1/finetune_checkpoints')
+    parser.add_argument('--train_csv_file',     type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/train.csv')
+    parser.add_argument('--test_csv_file',      type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/val.csv')
+    parser.add_argument('--finetune_train_dir', type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/train')
+    parser.add_argument('--finetune_test_dir',  type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/val')
+    parser.add_argument('--finetune_checkpoint',type=str,   default='/project/g/r13922043/hw1/finetune_checkpoints')
 
     config = parser.parse_args()
     return config
