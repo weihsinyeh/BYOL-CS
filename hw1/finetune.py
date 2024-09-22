@@ -12,7 +12,7 @@ from tqdm import tqdm
 torch.manual_seed(0)
 def finetune(config):
     config.device   = 'cuda' if torch.cuda.is_available() else 'cpu'
-
+    enable_amp = True if config.device == 'cuda' else False
     # Load Pretrained Model
     # Setting A models load resnet50 directly 
     if config.pretrain == False :
@@ -70,9 +70,12 @@ def finetune(config):
             
             # zero the parameter gradients
             scheduler.step()
-            optimizer.zero_grad()        
-            output_features = finetune_model(img)
-            loss            = criterion(output_features, label)
+            optimizer.zero_grad()
+
+            with torch.cuda.amp.autocast(enable_amp):
+                output_features = finetune_model(img)
+                loss = criterion(output_features, label)
+
             loss_list.append(loss.item())
             scaler.scale(loss).backward()
             scaler.step(optimizer)

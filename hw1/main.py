@@ -98,7 +98,7 @@ def main():
             img = data['img'].to(config.device)
             img2 = data['img2'].to(config.device)
 
-            with torch.cuda.amp.autocast(enabled):
+            with torch.cuda.amp.autocast(enable_amp):
                 loss = learner(img,img2)
 
             # Back propagation
