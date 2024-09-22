@@ -1,5 +1,4 @@
-import os
-import torch
+import os, torch, copy
 import torch.nn.functional as F
 import torchvision
 from torch.utils.data.dataloader import DataLoader
@@ -7,9 +6,11 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 from torch import nn
-from models.mlp_head import MLPHead
-import copy
-# loss fn
+
+# hw1_1
+from hw1_1.models.mlp_head import MLPHead
+
+# loss function
 def set_requires_grad(model, val):
     for p in model.parameters():
         p.requires_grad = val

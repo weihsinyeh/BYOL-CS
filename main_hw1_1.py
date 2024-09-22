@@ -1,17 +1,19 @@
-import os
-import torch
+import torch, os, argparse
 from torchvision import datasets
-from data.transforms import data_argument, data_preprocess, MultiViewDataInjector
-import argparse
-from trainer import BYOLTrainer
-from torch.utils.data import DataLoader
-from utils.dataloader import pretrain_dataloader
-
-from warmup_scheduler import GradualWarmupScheduler
-import torchvision.models as models
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import numpy as np
+from torch.utils.data import DataLoader
+import torchvision.models as models
+from torch.utils.tensorboard import SummaryWriter
+
+from dataprocess.transforms import data_argument, MultiViewDataInjector
+from dataprocess.normalize import data_normalize
+
+# hw1_1
+from hw1_1.trainer import BYOLTrainer
+from hw1_1.warmup_scheduler import GradualWarmupScheduler
+from hw1_1.utils.dataloader import pretrain_dataloader
+
 print(torch.__version__)
 torch.manual_seed(0)
 def parse():
@@ -42,7 +44,7 @@ def main():
     config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     enable_amp = True if config.device == 'cuda' else False
     config.data_transform = data_argument()
-    config.data_preprocess = data_preprocess()
+    config.data_normalize = data_normalize()
     print(f"Training with: { config.device}")
 
     # Load Dataset
@@ -116,7 +118,7 @@ def main():
             log_global_step += 1
 
         print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
-        if epoch % 10 == 0:
+        if epoch % 5 == 0:
             writer.add_scalar('train/loss', np.mean(loss_list), epoch)
             print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
             save_path = os.path.join(config.checkpointdir,f"backbone_{epoch}.pth")

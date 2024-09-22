@@ -1,14 +1,18 @@
-import argparse
-import torch, os
-from torchvision import transforms, datasets
-from data.transforms import data_argument, data_preprocess, MultiViewDataInjector
+import torch, os, argparse
 import torchvision
-import numpy as np
+from torchvision import datasets
 import torchvision.models as models
-from models.finetune_model import Finetune_Model
-from utils.dataloader import finetune_dataloader
-from warmup_scheduler import GradualWarmupScheduler
 from tqdm import tqdm
+import numpy as np
+
+from dataprocess.transforms import data_argument, MultiViewDataInjector
+from dataprocess.normalize import data_normalize
+
+# hw1_1
+from hw1_1.models.finetune_model import Finetune_Model
+from hw1_1.warmup_scheduler import GradualWarmupScheduler
+from hw1_1.utils.dataloader import finetune_dataloader
+
 torch.manual_seed(0)
 def finetune(config):
     config.device   = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -39,7 +43,7 @@ def finetune(config):
 
     # Load Dataset
     config.data_transform = data_argument()
-    config.data_preprocess = data_preprocess()
+    config.data_normalize = data_normalize()
     train_loader, val_loader = finetune_dataloader(config)
 
     # Finetune Model (backbone + classifier)

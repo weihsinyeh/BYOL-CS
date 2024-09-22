@@ -11,11 +11,6 @@ def data_argument():
                                 transforms.ToTensor(),
                                 transforms.Normalize( mean = torch.tensor([0.485, 0.456, 0.406]), std = torch.tensor([0.229, 0.224, 0.225]))])
 
-def data_preprocess():
-    return transforms.Compose([ transforms.Resize((image_size, image_size)),
-                                transforms.ToTensor(),
-                                transforms.Normalize( mean = torch.tensor([0.485, 0.456, 0.406]), std = torch.tensor([0.229, 0.224, 0.225]))])
-
 class MultiViewDataInjector(object):
     def __init__(self, *args):
         self.transforms     = args[0]

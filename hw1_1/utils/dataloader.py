@@ -33,7 +33,7 @@ class ImageFolderDataset(Dataset):
 
         self.transform      = config.data_transform
         self.batch_size     = config.batch_size
-        self.data_preprocess = config.data_preprocess
+        self.data_normalize = config.data_normalize
 
     def __len__(self):
         return len(self.data_frame)
@@ -46,7 +46,7 @@ class ImageFolderDataset(Dataset):
             data['label']   = self.data_frame.iloc[idx,2]
 
         data['img_name']    = self.data_frame.iloc[idx,1]
-        data['img']         = self.data_preprocess(img)
+        data['img']         = self.data_normalize(img)
 
         if  self.finetune == False:
             data['img2']        = self.transform(img)

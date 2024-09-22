@@ -9,3 +9,4 @@ logdir
 *checkpoints
 tmp/
 *finetune_checkpoints_SettingC
+command
