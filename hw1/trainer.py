@@ -3,115 +3,144 @@ import torch
 import torch.nn.functional as F
 import torchvision
 from torch.utils.data.dataloader import DataLoader
-from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import logging
-import matplotlib.pyplot as plt
 logger = logging.getLogger(__name__)
+from torch import nn
+from models.mlp_head import MLPHead
+import copy
+# loss fn
+def set_requires_grad(model, val):
+    for p in model.parameters():
+        p.requires_grad = val
 
-class BYOLTrainer:
-    def __init__(self, online_network, target_network, predictor, optimizer, device, **params):
-        self.online_network = online_network
-        self.target_network = target_network
-        self.optimizer = optimizer
-        self.summary_writer = SummaryWriter(os.path.join(params['logdir'], 'train_logs'))
-        self.device = device
-        self.predictor = predictor
+def loss_fn(x, y):
+    x = F.normalize(x, dim=-1, p=2)
+    y = F.normalize(y, dim=-1, p=2)
+    return 2 - 2 * (x * y).sum(dim=-1)
 
-        # trainer
-        self.batch_size = params['batch_size']
-        self.m = params['m']
-        self.checkpoint_interval = params['checkpoint_interval']
-        self.max_epochs = params['max_epochs']
-        self.checkpoint_dir = params['checkpointdir']
+# exponential moving average
+class EMA():
+    def __init__(self, beta):
+        super().__init__()
+        self.beta = beta
 
-    @torch.no_grad()
-    def _update_target_network_parameters(self):
-        """
-        Momentum update of the key encoder
-        """
-        for param_q, param_k in zip(self.online_network.parameters(), self.target_network.parameters()):
-            param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
+    def update_average(self, old, new):
+        if old is None:
+            return new
+        return old * self.beta + (1 - self.beta) * new
 
-    @staticmethod
-    def regression_loss(x, y):
-        x = F.normalize(x, dim=1)
-        y = F.normalize(y, dim=1)
-        return 2 - 2 * (x * y).sum(dim=-1)
+def update_moving_average(ema_updater, ma_model, current_model):
+    for current_params, ma_params in zip(current_model.parameters(), ma_model.parameters()):
+        old_weight, up_weight = ma_params.data, current_params.data
+        ma_params.data = ema_updater.update_average(old_weight, up_weight)
 
-    def initializes_target_network(self):
-        # init momentum network as encoder net
-        for param_q, param_k in zip(self.online_network.parameters(), self.target_network.parameters()):
-            param_k.data.copy_(param_q.data)  # initialize
-            param_k.requires_grad = False  # not update by gradient
+class Online_Encoder(nn.Module):
+    def __init__(self, backbone, output_dim, hidden_dim, layer=-2):
+        super().__init__()
+        self.backbone   = backbone
+        self.layer      = layer
+        self.projector  = None
+        self.output_dim = output_dim
+        self.hidden_dim = hidden_dim
+        self.MLPHead    = MLPHead( 2048, self.output_dim, self.hidden_dim)
+        self.hidden     = {}
+        self.hook_registered = False
 
-    def train(self, train_dataset):
-        niter = 0
-        model_checkpoints_folder = os.path.join(self.checkpoint_dir, 'checkpoints')
+    def _hook(self, _, input, output):
+        device = input[0].device
+        self.hidden[device] = output.reshape(output.shape[0], -1)
 
-        self.initializes_target_network()
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
-                                  num_workers=1, drop_last=False, shuffle=True)
-        for epoch in range(self.max_epochs):
-            loss_list = []
-            print("Epoch :",epoch)
-            for (batch_view_1, batch_view_2), _ in tqdm(train_loader):
-                batch_view_1 = batch_view_1.to(self.device)
-                batch_view_2 = batch_view_2.to(self.device)
+    def _register_hook(self):
+        # find layer
+        children = [*self.backbone.children()]
+        layer = children[self.layer]
+        # Register the tensor for a backward hook
+        handle = layer.register_forward_hook(self._hook)
+        self.hook_registered = True
 
-                '''
-                image1 = batch_view_1[8].permute(1, 2, 0).cpu().numpy()
-                image2 = batch_view_2[8].permute(1, 2, 0).cpu().numpy()
-    
-                fig, axs = plt.subplots(1, 2, figsize=(10, 5)) 
-                axs[0].imshow(image1)
-                axs[0].axis('off')  
-                axs[0].set_title('Image 1')  
+    def get_representation(self, x):
+        self._register_hook()
+        self.hidden.clear()
+        # triggers the forward pass and also activates the hook,
+        # capturing the output from the hooked layer.
+        _ = self.backbone(x)
+        # It retrieves the captured hidden representation stored in self.hidden
+        # (from the hooked layer output) and clears self.hidden again.
+        hidden = self.hidden[x.device]
+        self.hidden.clear()
+        return hidden
 
-                axs[1].imshow(image2)
-                axs[1].axis('off')  
-                axs[1].set_title('Image 2')  
-                plt.tight_layout()  
-                plt.show()
-                '''
+    def forward(self, x):
+        representation = self.get_representation(x)
+        projection = self.MLPHead(representation)
+        return projection, representation
 
-                loss = self.update(batch_view_1, batch_view_2)
+class BYOLTrainer(nn.Module):
+    def __init__(   self, **input ):
+        super().__init__()
+        self.backbone = input['backbone']
+        self.device = input['device']
+        self.online_encoder     = Online_Encoder(   self.backbone,
+                                                    input['output_dim'],
+                                                    input['hidden_dim'],
+                                                    layer=input['hidden_layer'])
 
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+        self.use_momentum       = input['use_momentum']
+        self.target_encoder     = None
+        self.target_ema_updater = EMA(input['moving_average_decay'])
+        self.online_predictor   = MLPHead(  input['output_dim'],
+                                            input['output_dim'],
+                                            input['hidden_dim'])
 
-                self._update_target_network_parameters()  # update the key encoder
-                niter += 1
-                loss_list.append(loss.item())
+        # send a mock image tensor to instantiate singleton parameters
+        self.to(self.device)
+        self.forward(torch.randn(2,
+                                input['input_shape'][2],
+                                input['input_shape'][0],
+                                input['input_shape'][0],
+                                device=self.device),
+                    torch.randn(2,
+                                input['input_shape'][2],
+                                input['input_shape'][0],
+                                input['input_shape'][0],
+                                device=self.device))
 
-            if epoch % 1 == 0:
-                checkpoint_name = 'model_epoch' + str(epoch) + '.pth'
-                self.save_model(os.path.join(model_checkpoints_folder, checkpoint_name))
-            self.summary_writer.add_scalar('train/loss', np.mean(loss_list), epoch)
-            logger.info(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
-            print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
+    def _get_target_encoder(self):
+        target_encoder = copy.deepcopy(self.online_encoder)
+        set_requires_grad(target_encoder, False)
+        return target_encoder
 
+    def reset_moving_average(self):
+        del self.target_encoder
+        self.target_encoder = None
 
-    def update(self, batch_view_1, batch_view_2):
-        # compute query feature
-        predictions_from_view_1 = self.predictor(self.online_network(batch_view_1))
-        predictions_from_view_2 = self.predictor(self.online_network(batch_view_2))
+    def update_moving_average(self):
+        assert self.use_momentum, 'you do not need to update the moving average, since you have turned off momentum for the target encoder'
+        assert self.target_encoder is not None, 'target encoder has not been created yet'
+        update_moving_average(self.target_ema_updater,
+                              self.target_encoder, self.online_encoder)
 
-        # compute key features
+    def forward(self, x, x2, return_embedding=False, return_projection=True):
+        if return_embedding:
+            return self.online_encoder(x, return_projection=return_projection)
+
+        online_proj_one, _      = self.online_encoder(x)
+        online_proj_two, _      = self.online_encoder(x2)
+
+        online_pred_one         = self.online_predictor(online_proj_one)
+        online_pred_two         = self.online_predictor(online_proj_two)
+
         with torch.no_grad():
-            targets_to_view_2 = self.target_network(batch_view_1)
-            targets_to_view_1 = self.target_network(batch_view_2)
+            target_encoder      = self._get_target_encoder(
+            ) if self.use_momentum else self.online_encoder
+            target_proj_one, _  = target_encoder(x)
+            target_proj_two, _  = target_encoder(x2)
+            target_proj_one.detach_()
+            target_proj_two.detach_()
 
-        loss = self.regression_loss(predictions_from_view_1, targets_to_view_1)
-        loss += self.regression_loss(predictions_from_view_2, targets_to_view_2)
+        loss_one    = loss_fn(online_pred_one, target_proj_two.detach())
+        loss_two    = loss_fn(online_pred_two, target_proj_one.detach())
+
+        loss        = loss_one + loss_two
         return loss.mean()
-
-    def save_model(self, PATH):
-
-        torch.save({
-            'online_network_state_dict': self.online_network.state_dict(),
-            'target_network_state_dict': self.target_network.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-        }, PATH)

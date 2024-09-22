@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 class MLPHead(nn.Module):
-    def __init__(self, in_channels, mlp_hidden_size, projection_size):
+    def __init__(self, in_channels, projection_size, mlp_hidden_size=4096):
         super(MLPHead, self).__init__()
 
         self.net = nn.Sequential(

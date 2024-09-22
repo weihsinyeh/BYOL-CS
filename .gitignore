@@ -6,5 +6,6 @@ hw1_data/*
 *jpg
 logdir
 *__pycache__
-checkpoints
-tmp
+*checkpoints
+tmp/
+*finetune_checkpoints_SettingC

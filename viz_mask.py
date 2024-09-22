@@ -110,8 +110,6 @@ def read_masks(seg):
     masks[mask == 0] = 6  # (Black: 000) Unknown
     return masks
 
-
-
 if __name__ == '__main__':
     cmap = cls_color
     args = arg_parse()
