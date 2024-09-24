@@ -31,7 +31,7 @@ def finetune(config):
             checkpoint_path = './hw1_data/p1_data/pretrain_model_SL.pt'
         # Setting C and E
         if config.My_pretrain == True : 
-            checkpoint_path = './hw1_1/backbone_ckpt/backbone_140.pth'
+            checkpoint_path = './hw1_1/backbone_ckpt/backbone_50.pth'
         checkpoint = torch.load(checkpoint_path)
         backbone.load_state_dict(checkpoint)
         print(f'Loaded backbone from {checkpoint_path}')

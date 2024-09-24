@@ -7,11 +7,12 @@ from torch.utils.data import DataLoader
 import torchvision.models as models
 from torch.utils.tensorboard import SummaryWriter
 
-from mean_iou_evaluate import mean_iou_score
+from mean_iou_evaluate import mean_iou_score_for_training
 from dataprocess.normalize import data_normalize_hw1_2
 
 # hw1_2
 from hw1_2.models.modelA import modelA
+from hw1_2.models.modelB import modelB
 from hw1_1.warmup_scheduler import GradualWarmupScheduler
 from hw1_2.utils.dataloader import dataloader
 
@@ -20,28 +21,28 @@ torch.manual_seed(0)
 def parse():
     parser = argparse.ArgumentParser()
     # data transform
-    parser.add_argument('--input_shape',        type=tuple, default=(128,128,3))
+    parser.add_argument('--input_shape',        type = tuple, default = (128,128,3))
     # trainning parameter
-    parser.add_argument('--batch_size',         type=int,   default=16)
-    parser.add_argument('--max_epochs',         type=int,   default=2000)
+    parser.add_argument('--batch_size',         type = int,   default = 16)
+    parser.add_argument('--max_epochs',         type = int,   default = 2000)
     # optimizer
-    parser.add_argument('--lr',                 type=float, default=0.0005)
+    parser.add_argument('--lr',                 type = float, default = 0.0005)
     # MODEL
-    parser.add_argument('--modelA',             type=bool,  default=True)
-    parser.add_argument('--modelB',             type=bool,  default=False)
-    parser.add_argument('--modelC',             type=bool,  default=False)
+    parser.add_argument('--modelA',             type = bool,  default = False)
+    parser.add_argument('--modelB',             type = bool,  default = True)
+    parser.add_argument('--modelC',             type = bool,  default = False)
     # path
-    parser.add_argument('--data_train_dir',     type=str,   default='/project/g/r13922043/hw1_data/p2_data/train')
-    parser.add_argument('--data_test_dir',      type=str,   default='/project/g/r13922043/hw1_data/p2_data/val')
-    parser.add_argument('--logdir',             type=str,   default='/project/g/r13922043/hw1_2/logdir')
-    parser.add_argument('--checkpointdir',      type=str,   default='/project/g/r13922043/hw1_2/modelA_checkpoints')
+    parser.add_argument('--data_train_dir',     type = str,   default = '/project/g/r13922043/hw1_data/p2_data/train')
+    parser.add_argument('--data_test_dir',      type = str,   default = '/project/g/r13922043/hw1_data/p2_data/val')
+    parser.add_argument('--logdir',             type = str,   default = '/project/g/r13922043/hw1_2/logdir')
+    parser.add_argument('--checkpointdir',      type = str,   default = '/project/g/r13922043/hw1_2/modelA_checkpoints')
 
     config = parser.parse_args()
+    config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     return config
 
 def main():
     config = parse()
-    config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     enable_amp = True if config.device == 'cuda' else False
 
     config.data_normalize = data_normalize_hw1_2()
@@ -53,6 +54,8 @@ def main():
     # Load model
     if config.modelA == True:
         model = modelA(config.device)
+    elif config.modelB == True:
+        model = modelB(config.device)
 
     # Loss function
     loss_function = nn.CrossEntropyLoss()
@@ -91,7 +94,9 @@ def main():
             # mask change to floatting 
             mask = mask.long()
             with torch.cuda.amp.autocast(enable_amp):
-                predict_feature = model(img)
+                if config.modelB == True:
+                    img = img.float()
+                predict_feature = model(img)['out']
                 '''
                 # An overview of semantic image segmentation.
                 Reference : https://www.jeremyjordan.me/semantic-segmentation/
@@ -99,7 +104,8 @@ def main():
                 pixel vector individually and then averages over all pixels,
                 we're essentially asserting equal learning to each pixel in the image.
                 '''
-                loss = loss_function(predict_feature, mask)
+                loss = loss_function(predict_feature, mask) 
+
             # Back propagation
             scheduler.step()
             # scale loss
@@ -116,31 +122,30 @@ def main():
             writer.add_scalar( "training/loss", loss.item(), global_step=log_global_step)
             log_global_step += 1
 
+        # Record Model
+        print(f"Epoch {epoch} : Training Loss {np.mean(loss_list)}")
+        if epoch % 5 == 0:
+            if config.modelA == True:
+                save_path = os.path.join(config.checkpointdir,f"modelA_{epoch}.pth")
+            if config.modelB == True:
+                save_path = os.path.join(config.checkpointdir,f"modelB_{epoch}.pth")
+            torch.save(model.state_dict(), save_path)
+
         model.eval()
-        ACCs = []
+        mean_iou = []
         for data in tqdm(val_loader):
             img     = data['img'].to(config.device)
             mask    = data['mask'].to(config.device)
 
             with torch.cuda.amp.autocast(enable_amp):
-                predict_feature = model(img)
+                predict_feature = model(img)['out']
 
-            predict_feature = predict_feature.argmax(dim=1)
-
-
-            predict_feature = predict_feature.detach().cpu().numpy().astype(np.int64)
-            mask = mask.detach().cpu().numpy().astype(np.int64)
-            ACCs.append(np.sum(predict_feature == mask) / len(mask.flatten()))
-
-        mean_iou = sum(ACCs) / len(ACCs)
+            predict = predict_feature.argmax(dim=1)
+            mean_iou.append(mean_iou_score_for_training(predict.detach().cpu().numpy(), mask.cpu().numpy()))
 
         print(f"Epoch {epoch} : mean_iou {np.mean(mean_iou)}")
+
         writer.add_scalar('train/loss', np.mean(loss_list), epoch)
-        print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
-        if epoch % 5 == 0:
-            if config.modelA == True:
-                save_path = os.path.join(config.checkpointdir,f"modelA_{epoch}.pth")
-            torch.save(model.state_dict(), save_path)
 
     save_path = os.path.join(config.checkpointdir,f"last_model.pth")
     torch.save(model.state_dict(), save_path)

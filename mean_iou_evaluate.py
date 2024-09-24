@@ -43,7 +43,22 @@ def mean_iou_score(pred, labels):
 
     return mean_iou
 
+def mean_iou_score_for_training(pred, labels):
+    '''
+    Compute mean IoU score over 6 classes
+    '''
+    mean_iou = 0
+    for i in range(6):
+        tp_fp = np.sum(pred == i)
+        tp_fn = np.sum(labels == i)
+        tp = np.sum((pred == i) * (labels == i))
+        if (tp_fp + tp_fn - tp != 0):
+            iou = tp / (tp_fp + tp_fn - tp)
+            mean_iou += iou / 6
+        # print('class #%d : %1.5f'%(i, iou))
+    # print('\nmean_iou: %f\n' % mean_iou)
 
+    return mean_iou
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -53,5 +68,5 @@ if __name__ == '__main__':
 
     pred = read_masks(args.pred)
     labels = read_masks(args.labels)
-
+    print(pred.shape, labels.shape)
     mean_iou_score(pred, labels)

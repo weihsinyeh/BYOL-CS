@@ -29,6 +29,18 @@ class modelA(nn.Module):
             (1,1,1000) channel = 1000
         '''
     
+        '''
+            Reference : https://github.com/pytorch/vision/blob/main/torchvision/models/vgg.py#L43
+            self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096), # classifier[0]
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, 4096),        # classifier[3]
+            nn.ReLU(True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, num_classes),
+        )
+        '''
         self.vgg16 = vgg16(weights=VGG16_Weights.DEFAULT).features
         self.fully_convolutional_net6 = nn.Sequential(  nn.Conv2d(512, 4096, kernel_size=7, padding=3),
                                         nn.ReLU(),
@@ -37,9 +49,7 @@ class modelA(nn.Module):
                                         nn.ReLU(),
                                         nn.Dropout2d())
         # classifier on pixel level
-        self.fully_convolutional_net8 = nn.Sequential(  nn.Conv2d(4096, 7, kernel_size=1),
-                                        nn.ReLU(),
-                                        nn.Dropout2d())
+        self.fully_convolutional_net8 = nn.Sequential( nn.Conv2d(4096, 7, kernel_size=1), nn.ReLU(), nn.Dropout2d())
         # Deconvolution
         self.deconv = nn.ConvTranspose2d(7, 7, kernel_size=64,stride = 32)
         self.to(device)
