@@ -35,7 +35,7 @@ def parse():
     parser.add_argument('--data_train_dir',     type = str,   default = '/project/g/r13922043/hw1_data/p2_data/train')
     parser.add_argument('--data_test_dir',      type = str,   default = '/project/g/r13922043/hw1_data/p2_data/val')
     parser.add_argument('--logdir',             type = str,   default = '/project/g/r13922043/hw1_2/logdir')
-    parser.add_argument('--checkpointdir',      type = str,   default = '/project/g/r13922043/hw1_2/modelA_checkpoints')
+    parser.add_argument('--checkpointdir',      type = str,   default = '/project/g/r13922043/hw1_2/modelB_checkpoints')
 
     config = parser.parse_args()
     config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
