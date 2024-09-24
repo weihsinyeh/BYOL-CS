@@ -33,7 +33,7 @@ def parse():
     parser.add_argument('--modelC',             type = bool,  default = False)
     # path
     parser.add_argument('--data_train_dir',     type = str,   default = '/project/g/r13922043/hw1_data/p2_data/train')
-    parser.add_argument('--data_test_dir',      type = str,   default = '/project/g/r13922043/hw1_data/p2_data/val')
+    parser.add_argument('--data_test_dir',      type = str,   default = '/project/g/r13922043/hw1_data/p2_data/validation')
     parser.add_argument('--logdir',             type = str,   default = '/project/g/r13922043/hw1_2/logdir')
     parser.add_argument('--checkpointdir',      type = str,   default = '/project/g/r13922043/hw1_2/modelB_checkpoints')
 

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision
 from torchvision.models.segmentation.deeplabv3 import DeepLabHead, FCNHead
  
-########## HW1_2 A ##########
+########## HW1_2 B ##########
 class modelB(nn.Module):
     def __init__(self, device) :
         super().__init__()
