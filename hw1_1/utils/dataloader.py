@@ -46,10 +46,8 @@ class ImageFolderDataset(Dataset):
             data['label']   = self.data_frame.iloc[idx,2]
 
         data['img_name']    = self.data_frame.iloc[idx,1]
-        data['img']         = self.data_normalize(img)
-
-        if  self.finetune == False:
-            data['img2']        = self.transform(img)
+        data['img']         = self.transform(img)
+        data['img2']        = self.transform(img)
 
         return data
     

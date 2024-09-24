@@ -75,7 +75,7 @@ def tsne_plot(save_dir, targets, outputs):
     # from 0 to 64
     plt.colorbar(scatter, ticks=range(65))
 
-    plt.savefig(os.path.join(save_dir,'tsne_epoch260.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_dir,'tsne_epoch15_924.png'), bbox_inches='tight')
     print('done!')
 
 def main(config):
@@ -91,10 +91,10 @@ def main(config):
     finetune_model = Finetune_Model(backbone        = backbone,
                                     input_features  = 1000,
                                     num_of_class    = 65).to(config.device)
-    checkpoint_path = '/home/weihsin/project/dlcv-fall-2024-hw1-weihsinyeh/hw1_1/finetune_checkpoints_SettingC/model_epoch260.pth'
+    checkpoint_path = '/home/weihsin/project/dlcv-fall-2024-hw1-weihsinyeh/hw1_1/finetune_checkpoints_SettingC_924/model_epoch15.pth'
     checkpoint = torch.load(checkpoint_path)
     finetune_model.load_state_dict(checkpoint)
-    finetune_model = nn.Sequential(*list(finetune_model.children())[:-2])
+    finetune_model = nn.Sequential(*list(finetune_model.children())[:-1])
     targets, outputs = gen_features(finetune_model, train_loader, config.device)
     outputs = outputs.reshape(outputs.shape[0], -1) 
     tsne_plot(config.save_dir, targets, outputs)

@@ -31,13 +31,14 @@ def finetune(config):
             checkpoint_path = './hw1_data/p1_data/pretrain_model_SL.pt'
         # Setting C and E
         if config.My_pretrain == True : 
-            checkpoint_path = './hw1_1/backbone_ckpt/backbone_110.pth'
+            checkpoint_path = './hw1_1/backbone_ckpt/backbone_140.pth'
         checkpoint = torch.load(checkpoint_path)
         backbone.load_state_dict(checkpoint)
         print(f'Loaded backbone from {checkpoint_path}')
 
+    # Remove the last two layers for fully convolutional layer in classifier
     backbone = nn.Sequential(*list(backbone.children())[:-2])
-    backbone = backbone.to(config.device)
+    # backbone = backbone.to(config.device)
 
     # Setting D and E
     if config.freeze == True:
@@ -88,7 +89,11 @@ def finetune(config):
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
- 
+        if epoch % 5 == 0:
+            checkpoint_name = 'model_epoch' + str(epoch) + '.pth'
+            save_path = os.path.join(config.finetune_checkpoint, checkpoint_name)
+            torch.save(finetune_model.state_dict(), save_path)  
+
         print(f'Epoch {epoch} : Loss {np.mean(loss_list)}')
         finetune_model.eval()
         validation_loss_list = []
@@ -108,11 +113,7 @@ def finetune(config):
         validation_loss = sum(validation_loss_list) / len(validation_loss_list)
         validation_accuarcy = sum(validation_accuarcy_list) / len(validation_accuarcy_list)
         print(f"Validation Loss: {validation_loss}")
-        print(f"Validation Accuracy: {validation_accuarcy}")
-        if epoch % 5 == 0:
-            checkpoint_name = 'model_epoch' + str(epoch) + '.pth'
-            save_path = os.path.join(config.finetune_checkpoint, checkpoint_name)
-            torch.save(finetune_model.state_dict(), save_path)     
+        print(f"Validation Accuracy: {validation_accuarcy}")   
 
 def parse():
     parser = argparse.ArgumentParser()
@@ -137,9 +138,9 @@ def parse():
 
     # setting 
     # pretrain model
-    parser.add_argument('--pretrain',           type = bool,    default = False)
+    parser.add_argument('--pretrain',           type = bool,    default = True)
     parser.add_argument('--TA_pretrain',        type = bool,    default = False)
-    parser.add_argument('--My_pretrain',        type = bool,    default = False)
+    parser.add_argument('--My_pretrain',        type = bool,    default = True)
     # finetune model
     parser.add_argument('--freeze',             type = bool,    default = False) 
     '''

@@ -27,8 +27,8 @@ def parse():
     parser.add_argument('--lr',                 type=float, default=0.0005)
     # pretrained model path
     parser.add_argument('--data_dir',           type=str,   default='/project/g/r13922043/hw1_data/p1_data/mini/train')
-    parser.add_argument('--checkpointdir',      type=str,   default='/project/g/r13922043/hw1_1/pretrain_checkpoints')
-    parser.add_argument('--logdir',             type=str,   default='/project/g/r13922043/hw1_1/logdir/pretrain')
+    parser.add_argument('--checkpointdir',      type=str,   default='/project/g/r13922043/hw1_1/pretrain_checkpoints924')
+    parser.add_argument('--logdir',             type=str,   default='/project/g/r13922043/hw1_1/logdir_pretrain924')
     # finetune path
     parser.add_argument('--train_csv_file',     type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/train.csv')
     parser.add_argument('--test_csv_file',      type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/val.csv')

@@ -7,6 +7,7 @@ def data_argument():
                                 transforms.RandomGrayscale(p = 0.2),
                                 transforms.RandomHorizontalFlip(),
                                 transforms.RandomApply( [transforms.GaussianBlur((3, 3), (1.0, 2.0))], p = 0.2),
+                                transforms.Pad(20),
                                 transforms.RandomResizedCrop((image_size, image_size)),
                                 transforms.ToTensor(),
                                 transforms.Normalize( mean = torch.tensor([0.485, 0.456, 0.406]), std = torch.tensor([0.229, 0.224, 0.225]))])
