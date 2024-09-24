@@ -1,19 +1,17 @@
-import torch, os, argparse
+import os
+import torch
 from torchvision import datasets
-from tqdm import tqdm
-import numpy as np
+from data.transforms import data_argument, data_preprocess, MultiViewDataInjector
+import argparse
+from trainer import BYOLTrainer
 from torch.utils.data import DataLoader
+from utils.dataloader import pretrain_dataloader
+
+from warmup_scheduler import GradualWarmupScheduler
 import torchvision.models as models
 from torch.utils.tensorboard import SummaryWriter
-
-from dataprocess.transforms import data_argument, MultiViewDataInjector
-from dataprocess.normalize import data_normalize
-
-# hw1_1
-from hw1_1.trainer import BYOLTrainer
-from hw1_1.warmup_scheduler import GradualWarmupScheduler
-from hw1_1.utils.dataloader import pretrain_dataloader
-
+from tqdm import tqdm
+import numpy as nphi
 print(torch.__version__)
 torch.manual_seed(0)
 def parse():
@@ -26,15 +24,15 @@ def parse():
     # optimizer
     parser.add_argument('--lr',                 type=float, default=0.0005)
     # pretrained model path
-    parser.add_argument('--data_dir',           type=str,   default='/project/g/r13922043/hw1_data/p1_data/mini/train')
-    parser.add_argument('--checkpointdir',      type=str,   default='/project/g/r13922043/hw1_1/pretrain_checkpoints')
-    parser.add_argument('--logdir',             type=str,   default='/project/g/r13922043/hw1_1/logdir/pretrain')
+    parser.add_argument('--data_dir',           type=str,   default='./hw1_data/p1_data/mini/train')
+    parser.add_argument('--checkpointdir',      type=str,   default='./hw1/pretrain_checkpoints')
+    parser.add_argument('--logdir',             type=str,   default='./hw1/logdir')
     # finetune path
-    parser.add_argument('--train_csv_file',     type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/train.csv')
-    parser.add_argument('--test_csv_file',      type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/val.csv')
-    parser.add_argument('--finetune_train_dir', type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/train')
-    parser.add_argument('--finetune_test_dir',  type=str,   default='/project/g/r13922043/hw1_data/p1_data/office/val')
-    parser.add_argument('--finetune_checkpoint',type=str,   default='/project/g/r13922043/hw1_1/finetune_checkpoints')
+    parser.add_argument('--train_csv_file',     type=str,   default='./hw1_data/p1_data/office/train.csv')
+    parser.add_argument('--test_csv_file',      type=str,   default='./hw1_data/p1_data/office/val.csv')
+    parser.add_argument('--finetune_train_dir', type=str,   default='./hw1_data/p1_data/office/train')
+    parser.add_argument('--finetune_test_dir',  type=str,   default='./hw1_data/p1_data/office/val')
+    parser.add_argument('--finetune_checkpoint',type=str,   default='./hw1/finetune_checkpoints')
 
     config = parser.parse_args()
     return config
@@ -44,13 +42,13 @@ def main():
     config.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     enable_amp = True if config.device == 'cuda' else False
     config.data_transform = data_argument()
-    config.data_normalize = data_normalize()
+    config.data_preprocess = data_preprocess()
     print(f"Training with: { config.device}")
 
     # Load Dataset
-    train_loader, valid_loader = pretrain_dataloader(config)
+    train_loader    = pretrain_dataloader(config)
 
-    # Load Backbone - Using no weights:
+    # Load Backbone
     backbone        = models.resnet50(weights=None)
     input = {   'backbone' : backbone,
                 'input_shape' : config.input_shape,
@@ -90,18 +88,17 @@ def main():
     log_global_step = 0
     saved_files = []
 
+    # Training
     for epoch in range(config.max_epochs):
         writer.add_scalar('training/epoch', epoch, global_step=log_global_step)
-        # Training
         loss_list = []
-        learner.train()
         for data in tqdm(train_loader):
             optim.zero_grad()
             # Forward pass
             img = data['img'].to(config.device)
             img2 = data['img2'].to(config.device)
 
-            with torch.cuda.amp.autocast(enable_amp):
+            with torch.cuda.amp.autocast(enabled):
                 loss = learner(img,img2)
 
             # Back propagation
@@ -118,35 +115,12 @@ def main():
             writer.add_scalar( "training/loss", loss.item(), global_step=log_global_step)
             log_global_step += 1
 
-        # Record Training Loss
-        print(f"Epoch {epoch} : Training Loss {np.mean(loss_list)}")
-        print(f"Epoch {epoch} : Learning Rate {optim.param_groups[0]['lr']}")
-        if epoch % 5 == 0:
+        print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
+        if epoch % 10 == 0:
             writer.add_scalar('train/loss', np.mean(loss_list), epoch)
-            print(f"Epoch {epoch} : Training Loss {np.mean(loss_list)}")
+            print(f"Epoch {epoch} : Loss {np.mean(loss_list)}")
             save_path = os.path.join(config.checkpointdir,f"backbone_{epoch}.pth")
             torch.save(backbone.state_dict(), save_path)
-
-        # Validation
-        validation_loss = []
-        learner.eval()
-        for data in tqdm(valid_loader):
-            optim.zero_grad()
-            # Forward pass
-            img = data['img'].to(config.device)
-            img2 = data['img2'].to(config.device)
-
-            with torch.cuda.amp.autocast(enable_amp):
-                loss = learner(img,img2)
-
-            loss = loss.item()
-            validation_loss.append(loss)
-        
-        # Record Validation Loss
-        writer.add_scalar("validation/loss", np.mean(validation_loss), epoch)
-        print(f"Epoch {epoch} : validation_loss Loss {np.mean(validation_loss)}")
-
-        learner.train()
 
     save_path = os.path.join(config.checkpointdir,f"last_backbone.pth")
     torch.save(backbone.state_dict(), save_path)

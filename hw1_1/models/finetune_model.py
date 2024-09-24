@@ -1,19 +1,17 @@
 import random
 from torch import nn
-from models.classifier import Classifier
+from hw1_1.models.classifier import Classifier
 class Finetune_Model(nn.Module):
     def __init__(   self, 
                     backbone, 
                     input_features, 
                     num_of_class, 
-                    num_of_layer = 3, 
                     dropout = 0.1, 
-                    hidden_dim = 128):
+                    hidden_dim = 512):
         super().__init__()
         self.backbone   = backbone
         self.classifer  = Classifier(   input_features  = input_features,
                                         num_of_class    = num_of_class,
-                                        num_of_layer   = num_of_layer,
                                         dropout         = dropout,
                                         hidden_dim      = hidden_dim )
     def forward(self, x):

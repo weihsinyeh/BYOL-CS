@@ -1,7 +1,7 @@
 import os
 import torch
 from torchvision import datasets
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split
 import pandas as pd
 from PIL import Image
 def create_dataframe_from_directory(directory):
@@ -65,6 +65,8 @@ def finetune_dataloader(config):
     return train_data_loader, test_data_loader
 
 def pretrain_dataloader(config):
-    train_dataset       = ImageFolderDataset(config, finetune = False)                             
+    train_dataset       = ImageFolderDataset(config, finetune = False) 
+    train_dataset, valid_dataset = random_split(train_dataset, [0.9, 0.1])                            
     train_data_loader   = DataLoader(train_dataset, batch_size=config.batch_size, num_workers=1, drop_last=False, shuffle=True)
-    return train_data_loader
+    valid_data_loader   = DataLoader(valid_dataset, batch_size=config.batch_size, num_workers=1, drop_last=False, shuffle=True)
+    return train_data_loader, valid_data_loader

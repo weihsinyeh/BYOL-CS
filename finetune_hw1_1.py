@@ -4,23 +4,26 @@ from torchvision import datasets
 import torchvision.models as models
 from tqdm import tqdm
 import numpy as np
-
+from torch import nn
 from dataprocess.transforms import data_argument, MultiViewDataInjector
 from dataprocess.normalize import data_normalize
 
-# hw1_1
+# HW 1_1
 from hw1_1.models.finetune_model import Finetune_Model
 from hw1_1.warmup_scheduler import GradualWarmupScheduler
 from hw1_1.utils.dataloader import finetune_dataloader
 
+# Fixed random seed for reproducibility
 torch.manual_seed(0)
+
 def finetune(config):
     config.device   = 'cuda' if torch.cuda.is_available() else 'cpu'
     enable_amp = True if config.device == 'cuda' else False
-    # Load Pretrained Model
+    # Load Pretrained Model - Using no weights:
     # Setting A models load resnet50 directly 
     if config.pretrain == False :
         backbone = models.resnet50(weights=None)
+        print('Loaded backbone from resnet50 without weights')
     else :
         # Setting B and D 
         backbone = models.resnet50(weights=None)
@@ -28,11 +31,12 @@ def finetune(config):
             checkpoint_path = './hw1_data/p1_data/pretrain_model_SL.pt'
         # Setting C and E
         if config.My_pretrain == True : 
-            checkpoint_path = './hw1/pretrain_checkpoints/backbone_30.pth'
+            checkpoint_path = './hw1_1/backbone_ckpt/backbone_110.pth'
         checkpoint = torch.load(checkpoint_path)
         backbone.load_state_dict(checkpoint)
         print(f'Loaded backbone from {checkpoint_path}')
 
+    backbone = nn.Sequential(*list(backbone.children())[:-2])
     backbone = backbone.to(config.device)
 
     # Setting D and E
@@ -119,26 +123,27 @@ def parse():
     parser.add_argument('--batch_size',         type = int,     default = 32)
     parser.add_argument('--max_epochs',         type = int,     default = 400)
     # optimizer
-    parser.add_argument('--lr',                 type=float,     default=0.0005)
+    parser.add_argument('--lr',                 type = float,   default = 0.0005)
     # pretrained model path
     parser.add_argument('--data_dir',           type = str,     default = '/project/g/r13922043/hw1_data/p1_data/mini/train')
-    parser.add_argument('--checkpointdir',      type = str,     default = '/project/g/r13922043/hw1/pretrain_checkpoints')
-    parser.add_argument('--logdir',             type = str,     default = '/project/g/r13922043/hw1/logdir')
+    parser.add_argument('--checkpointdir',      type = str,     default = '/project/g/r13922043/hw1_1/pretrain_checkpoints')
+    parser.add_argument('--logdir',             type = str,     default = '/project/g/r13922043/hw1_1/logdir')
     # finetune path
     parser.add_argument('--train_csv_file',     type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/train.csv')
     parser.add_argument('--test_csv_file',      type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/val.csv')
     parser.add_argument('--finetune_train_dir', type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/train')
     parser.add_argument('--finetune_test_dir',  type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/val')
-    parser.add_argument('--finetune_checkpoint',type = str,     default = '/project/g/r13922043/hw1/finetune_checkpoints_SettingC')
+    parser.add_argument('--finetune_checkpoint',type = str,     default = '/project/g/r13922043/hw1_1/finetune_checkpoints_SettingC')
 
     # setting 
     # pretrain model
-    parser.add_argument('--pretrain',           type = bool,    default = True)
+    parser.add_argument('--pretrain',           type = bool,    default = False)
     parser.add_argument('--TA_pretrain',        type = bool,    default = False)
-    parser.add_argument('--My_pretrain',        type = bool,    default = True)
+    parser.add_argument('--My_pretrain',        type = bool,    default = False)
     # finetune model
-    parser.add_argument('--freeze',    type = bool,    default = False) 
+    parser.add_argument('--freeze',             type = bool,    default = False) 
     '''
+    Description
     Setting A :
         Pretrain : NULL     
         Finetune : Train full model (backbone + classifier)

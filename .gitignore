@@ -7,6 +7,11 @@ hw1_data/*
 logdir
 *__pycache__
 *checkpoints
-tmp/
-*finetune_checkpoints_SettingC
+log/
+*finetune_checkpoints_SettingC*
 command
+modelA_evaluation
+*ckpt
+finetune_checkpoints_SettingA
+tsne_results
+command.md
