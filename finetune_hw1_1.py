@@ -37,8 +37,8 @@ def finetune(config):
         print(f'Loaded backbone from {checkpoint_path}')
 
     # Remove the last two layers for fully convolutional layer in classifier
-    backbone = nn.Sequential(*list(backbone.children())[:-2])
-    # backbone = backbone.to(config.device)
+    # backbone = nn.Sequential(*list(backbone.children())[:-2])
+    backbone = backbone.to(config.device)
 
     # Setting D and E
     if config.freeze == True:
