@@ -15,3 +15,9 @@ modelA_evaluation
 finetune_checkpoints_SettingA
 tsne_results
 command.md
+checkpoint_dir
+tsne_results
+modelB_evaluation
+modelA_evaluation
+modelA_checkpoints*
+results

@@ -28,9 +28,8 @@ def parse():
     # optimizer
     parser.add_argument('--lr',                 type = float, default = 0.0005)
     # MODEL
-    parser.add_argument('--modelA',             type = bool,  default = False)
-    parser.add_argument('--modelB',             type = bool,  default = True)
-    parser.add_argument('--modelC',             type = bool,  default = False)
+    parser.add_argument('--modelA',             type = bool,  default = True)
+    parser.add_argument('--modelB',             type = bool,  default = False)
     # path
     parser.add_argument('--data_train_dir',     type = str,   default = '/project/g/r13922043/hw1_data/p2_data/train')
     parser.add_argument('--data_test_dir',      type = str,   default = '/project/g/r13922043/hw1_data/p2_data/validation')
@@ -94,16 +93,18 @@ def main():
             # mask change to floatting 
             mask = mask.long()
             with torch.cuda.amp.autocast(enable_amp):
+                if config.modelA == True:
+                    predict_feature = model(img)
                 if config.modelB == True:
                     img = img.float()
-                predict_feature = model(img)['out']
-                '''
-                # An overview of semantic image segmentation.
-                Reference : https://www.jeremyjordan.me/semantic-segmentation/
-                Because the cross entropy loss evaluates the class predictions for each
-                pixel vector individually and then averages over all pixels,
-                we're essentially asserting equal learning to each pixel in the image.
-                '''
+                    predict_feature = model(img)['out']
+                    '''
+                    # An overview of semantic image segmentation.
+                    Reference : https://www.jeremyjordan.me/semantic-segmentation/
+                    Because the cross entropy loss evaluates the class predictions for each
+                    pixel vector individually and then averages over all pixels,
+                    we're essentially asserting equal learning to each pixel in the image.
+                    '''
                 loss = loss_function(predict_feature, mask) 
 
             # Back propagation
@@ -138,7 +139,10 @@ def main():
             mask    = data['mask'].to(config.device)
 
             with torch.cuda.amp.autocast(enable_amp):
-                predict_feature = model(img)['out']
+                if config.modelA == True:
+                    predict_feature = model(img)
+                if config.modelB == True:
+                    predict_feature = model(img)['out']
 
             predict = predict_feature.argmax(dim=1)
             mean_iou.append(mean_iou_score_for_training(predict.detach().cpu().numpy(), mask.cpu().numpy()))

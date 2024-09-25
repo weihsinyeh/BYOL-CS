@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torchvision
 from torchvision.models import VGG16_Weights, vgg16
-from torchvision.models.segmentation.deeplabv3 import DeepLabHead, FCNHead
 
 ########## HW1_2 A ##########
 class modelA(nn.Module):

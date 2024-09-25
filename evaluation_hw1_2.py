@@ -12,6 +12,7 @@ from dataprocess.normalize import data_normalize_hw1_2
 
 # hw1_2
 from hw1_2.models.modelA import modelA
+from hw1_2.models.modelB import modelB
 from hw1_1.warmup_scheduler import GradualWarmupScheduler
 from hw1_2.utils.dataloader import dataloader 
 from PIL import Image
@@ -34,8 +35,8 @@ def parse():
     parser.add_argument('--data_train_dir',     type=str,   default='/project/g/r13922043/hw1_data/p2_data/train')
     parser.add_argument('--data_test_dir',      type=str,   default='/project/g/r13922043/hw1_data/p2_data/val')
     parser.add_argument('--logdir',             type=str,   default='/project/g/r13922043/hw1_2/logdir')
-    parser.add_argument('--checkpoint',         type=str,   default='./hw1_2/modelA_checkpoints/modelA_110.pth')
-    parser.add_argument('--output_dir',         type=str,   default='/project/g/r13922043/hw1_2/modelA_evaluation')
+    parser.add_argument('--checkpoint',         type=str,   default='/home/weihsin/project/dlcv-fall-2024-hw1-weihsinyeh/hw1_2/modelA_checkpoints_925/modelA_5.pth')
+    parser.add_argument('--output_dir',         type=str,   default='/project/g/r13922043/hw1_2/modelB_evaluation')
     config = parser.parse_args()
     return config
 
@@ -57,6 +58,11 @@ def main():
         checkpoint = torch.load(config.checkpoint)
         model.load_state_dict(checkpoint)
 
+    if config.modelB == True:
+        model = modelB(config.device)
+        checkpoint = torch.load(config.checkpoint)
+        model.load_state_dict(checkpoint)
+
     model.eval()
     ACCs = []
     color_map = {   0:  (0,     255,    255),   # Cyan
@@ -72,9 +78,16 @@ def main():
         mask    = data['mask'].to(config.device)
         name    = data['name']
         predict_feature = model(img)
-        predict_feature = predict_feature.argmax(dim=1)
+        if config.modelA == True:
+            predict_feature = predict_feature.argmax(dim=1)
+            mask = predict_feature[0].cpu().numpy()  
 
-        mask = predict_feature[0].cpu().numpy()  
+        elif config.modelB == True:
+            predict_feature = model(img)['out']
+
+            predict = predict_feature.argmax(dim=1)
+            mask = predict[0].cpu().numpy()  
+            
 
         height, width = mask.shape
         rgb_mask = np.zeros((height, width, 3), dtype=np.uint8)

@@ -9,7 +9,7 @@ import sys
 # from tsne import bh_sne
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-
+import torchvision.models as models
 from hw1_1.utils.dataloader import finetune_dataloader
 from hw1_1.models.finetune_model import Finetune_Model
 from dataprocess.normalize import data_normalize
@@ -26,7 +26,7 @@ def parse():
     parser.add_argument('--finetune_test_dir',  type = str,     default = './hw1_data/p1_data/office/val')
     parser.add_argument('--finetune_checkpoint',type = str,     default = './hw1_1/finetune_checkpoints_SettingC')
 
-    parser.add_argument('--save_dir',           type = str,       default = './tsne_results')
+    parser.add_argument('--save_dir',           type = str,       default = './tsne_results/finetune_checkpoints_SettingC_925')
     parser.add_argument('--batch_size',         type = int,       default=1)
 
     args = parser.parse_args()
@@ -52,8 +52,6 @@ def gen_features(model, dataloader, device):
             
     targets = np.concatenate(targets_list, axis=0)
     outputs = np.concatenate(outputs_list, axis=0).astype(np.float64)
-
-
     return targets, outputs
 
 def tsne_plot(save_dir, targets, outputs):
@@ -75,7 +73,7 @@ def tsne_plot(save_dir, targets, outputs):
     # from 0 to 64
     plt.colorbar(scatter, ticks=range(65))
 
-    plt.savefig(os.path.join(save_dir,'tsne_epoch50_926.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_dir,'tsne_epoch395.png'), bbox_inches='tight')
     print('done!')
 
 def main(config):
@@ -86,12 +84,12 @@ def main(config):
     train_loader, val_loader = finetune_dataloader(config)
 
     # Load Model
-    backbone = torchvision.models.resnet50(weights=None)
-    backbone = nn.Sequential(*list(backbone.children())[:-2])
+    backbone = models.resnet50(weights=None)
+    # backbone = nn.Sequential(*list(backbone.children())[:-2])
     finetune_model = Finetune_Model(backbone        = backbone,
                                     input_features  = 1000,
                                     num_of_class    = 65).to(config.device)
-    checkpoint_path = '/home/weihsin/project/dlcv-fall-2024-hw1-weihsinyeh/hw1_1/finetune_checkpoints_SettingC_924_4/model_epoch50.pth'
+    checkpoint_path = '/home/weihsin/project/dlcv-fall-2024-hw1-weihsinyeh/hw1_1/finetune_checkpoints_SettingC_925/model_epoch395.pth'
     checkpoint = torch.load(checkpoint_path)
     finetune_model.load_state_dict(checkpoint)
     finetune_model = nn.Sequential(*list(finetune_model.children())[:-1])

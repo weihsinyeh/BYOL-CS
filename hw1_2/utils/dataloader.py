@@ -38,5 +38,5 @@ def dataloader(config):
     train_dataset       = ImageFolderDataset(config, train = True)                             
     train_data_loader   = DataLoader( train_dataset, batch_size = config.batch_size, shuffle = True)
     test_dataset        = ImageFolderDataset(config, train = False)
-    test_data_loader    = DataLoader( test_dataset, batch_size = 4, shuffle = False, drop_last = True)
+    test_data_loader    = DataLoader( test_dataset, batch_size = 16, shuffle = False, drop_last = True)
     return train_data_loader, test_data_loader
