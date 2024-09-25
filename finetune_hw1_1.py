@@ -28,7 +28,7 @@ def finetune(config):
         # Setting B and D 
         backbone = models.resnet50(weights=None)
         if config.TA_pretrain == True : 
-            checkpoint_path = './hw1_data/p1_data/pretrain_model_SL.pt'
+            checkpoint_path = '/project/g/r13922043/hw1_data/p1_data/pretrain_model_SL.pt'
         # Setting C and E
         if config.My_pretrain == True : 
             checkpoint_path = '/project/g/r13922043/hw1_1/pretrain_checkpoints924/backbone_60.pth'
@@ -134,15 +134,15 @@ def parse():
     parser.add_argument('--test_csv_file',      type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/val.csv')
     parser.add_argument('--finetune_train_dir', type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/train')
     parser.add_argument('--finetune_test_dir',  type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/val')
-    parser.add_argument('--finetune_checkpoint',type = str,     default = '/project/g/r13922043/hw1_1/finetune_checkpoints_SettingE')
+    parser.add_argument('--finetune_checkpoint',type = str,     default = '/project/g/r13922043/hw1_1/finetune_checkpoints_SettingB')
 
     # setting 
     # pretrain model
     parser.add_argument('--pretrain',           type = bool,    default = True)
-    parser.add_argument('--TA_pretrain',        type = bool,    default = False)
-    parser.add_argument('--My_pretrain',        type = bool,    default = True)
+    parser.add_argument('--TA_pretrain',        type = bool,    default = True)
+    parser.add_argument('--My_pretrain',        type = bool,    default = False)
     # finetune model
-    parser.add_argument('--freeze',             type = bool,    default = True) 
+    parser.add_argument('--freeze',             type = bool,    default = False)
     '''
     Description
     Setting A :
