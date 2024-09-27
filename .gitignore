@@ -24,3 +24,5 @@ results
 checkpoint
 Pb2_evaluation
 Pb1_output.csv
+bestmodel_PbA.pth
+bestmodel_PbB.pth

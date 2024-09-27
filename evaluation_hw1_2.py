@@ -27,7 +27,7 @@ def parse():
     # path
     parser.add_argument('--data_train_dir',     type=str,   default='./hw1_data/p2_data/train')
     parser.add_argument('--data_test_dir',      type=str,   default='./hw1_data/p2_data/validation')
-    parser.add_argument('--checkpoint',         type=str,   default='./checkpoint/bestmodel_PbB.pth')
+    parser.add_argument('--checkpoint',         type=str,   default='./bestmodel_PbB.pth')
     parser.add_argument('--output_dir',         type=str,   default='./Pb2_evaluation')
     config = parser.parse_args()
     return config

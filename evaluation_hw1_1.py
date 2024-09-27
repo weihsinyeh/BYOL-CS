@@ -79,7 +79,7 @@ def parse():
     parser.add_argument('--test_csv_file',      type = str,     default = './hw1_data/p1_data/office/val.csv')
     parser.add_argument('--finetune_test_dir',  type = str,     default = './hw1_data/p1_data/office/val')
     parser.add_argument('--output_csv_file',    type = str,     default = 'PB1_output.csv')
-    parser.add_argument('--finetune_checkpoint',type = str,     default = './checkpoint/bestmodel_PbA.pth')
+    parser.add_argument('--finetune_checkpoint',type = str,     default = './bestmodel_PbA.pth')
     
     args = parser.parse_args()
     return args
