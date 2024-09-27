@@ -41,14 +41,19 @@ class modelA(nn.Module):
         )
         '''
         self.vgg16 = vgg16(weights=VGG16_Weights.DEFAULT).features
-        self.fully_convolutional_net6 = nn.Sequential(  nn.Conv2d(512, 4096, kernel_size=7, padding=3),
-                                        nn.ReLU(),
-                                        nn.Dropout2d())
-        self.fully_convolutional_net7 = nn.Sequential(  nn.Conv2d(4096, 4096, kernel_size=1),
-                                        nn.ReLU(),
-                                        nn.Dropout2d())
+        self.vgg16[0].padding = 100
+
+        self.fully_convolutional_net6 = nn.Sequential( nn.Conv2d(512, 4096, kernel_size=7, padding=3), nn.ReLU(), nn.Dropout2d())
+        self.fully_convolutional_net6[0].weight.data = vgg16(weights=VGG16_Weights.DEFAULT).classifier[0].weight.data.view(self.fully_convolutional_net6[0].weight.size())
+        self.fully_convolutional_net6[0].bias.data = vgg16(weights=VGG16_Weights.DEFAULT).classifier[0].bias.data.view(self.fully_convolutional_net6[0].bias.size())
+
+        
+        self.fully_convolutional_net7 = nn.Sequential( nn.Conv2d(4096, 4096, kernel_size=1), nn.ReLU(), nn.Dropout2d())
+        self.fully_convolutional_net7[0].weight.data = vgg16(weights=VGG16_Weights.DEFAULT).classifier[3].weight.data.view(self.fully_convolutional_net7[0].weight.size())
+        self.fully_convolutional_net7[0].bias.data = vgg16(weights=VGG16_Weights.DEFAULT).classifier[3].bias.data.view(self.fully_convolutional_net7[0].bias.size())
         # classifier on pixel level
-        self.fully_convolutional_net8 = nn.Sequential( nn.Conv2d(4096, 7, kernel_size=1), nn.ReLU(), nn.Dropout2d())
+        self.fully_convolutional_net8 = nn.Sequential(  nn.Conv2d(4096, 7, kernel_size=1), 
+                                                        nn.ReLU())
         # Deconvolution
         self.deconv = nn.ConvTranspose2d(7, 7, kernel_size=64,stride = 32)
         self.to(device)

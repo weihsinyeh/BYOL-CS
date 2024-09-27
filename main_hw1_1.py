@@ -123,7 +123,6 @@ def main():
         print(f"Epoch {epoch} : Learning Rate {optim.param_groups[0]['lr']}")
         if epoch % 5 == 0:
             writer.add_scalar('train/loss', np.mean(loss_list), epoch)
-            print(f"Epoch {epoch} : Training Loss {np.mean(loss_list)}")
             save_path = os.path.join(config.checkpointdir,f"backbone_{epoch}.pth")
             torch.save(backbone.state_dict(), save_path)
 

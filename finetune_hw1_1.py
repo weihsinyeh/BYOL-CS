@@ -13,10 +13,10 @@ from hw1_1.models.finetune_model import Finetune_Model
 from hw1_1.warmup_scheduler import GradualWarmupScheduler
 from hw1_1.utils.dataloader import finetune_dataloader
 
-# Fixed random seed for reproducibility
-torch.manual_seed(0)
-
 def finetune(config):
+    # Fixed random seed for reproducibility
+    torch.manual_seed(0)
+    print(f'random seed set to 0')
     config.device   = 'cuda' if torch.cuda.is_available() else 'cpu'
     enable_amp = True if config.device == 'cuda' else False
     # Load Pretrained Model - Using no weights:
@@ -28,10 +28,10 @@ def finetune(config):
         # Setting B and D 
         backbone = models.resnet50(weights=None)
         if config.TA_pretrain == True : 
-            checkpoint_path = '/project/g/r13922043/hw1_data/p1_data/pretrain_model_SL.pt'
+            checkpoint_path = './hw1_data/p1_data/pretrain_model_SL.pt'
         # Setting C and E
         if config.My_pretrain == True : 
-            checkpoint_path = '/project/g/r13922043/hw1_1/pretrain_checkpoints924/backbone_60.pth'
+            checkpoint_path = './hw1_1/checkpoint_dir/backbone_ckpt/backbone_150.pth'
         checkpoint = torch.load(checkpoint_path)
         backbone.load_state_dict(checkpoint)
         print(f'Loaded backbone from {checkpoint_path}')
@@ -70,7 +70,7 @@ def finetune(config):
     )
     scaler = torch.cuda.amp.GradScaler(enabled=True)
 
-    for epoch in range(config.max_epochs):
+    for epoch in range(config.max_epochs+1):
         loss_list = []
         finetune_model.train()
         for data in tqdm(train_loader):
@@ -94,7 +94,7 @@ def finetune(config):
             save_path = os.path.join(config.finetune_checkpoint, checkpoint_name)
             torch.save(finetune_model.state_dict(), save_path)  
 
-        print(f'Epoch {epoch} : Loss {np.mean(loss_list)}')
+        print(f'Epoch {epoch} : Training Loss {np.mean(loss_list)}')
         finetune_model.eval()
         validation_loss_list = []
         validation_accuarcy_list = []
@@ -115,6 +115,11 @@ def finetune(config):
         print(f"Validation Loss: {validation_loss}")
         print(f"Validation Accuracy: {validation_accuarcy}")   
 
+        if validation_accuarcy > 0.47 and epoch % 5 != 0:
+            checkpoint_name = 'model_epoch' + str(epoch) + '.pth'
+            save_path = os.path.join(config.finetune_checkpoint, checkpoint_name)
+            torch.save(finetune_model.state_dict(), save_path)
+
 def parse():
     parser = argparse.ArgumentParser()
 
@@ -134,13 +139,13 @@ def parse():
     parser.add_argument('--test_csv_file',      type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/val.csv')
     parser.add_argument('--finetune_train_dir', type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/train')
     parser.add_argument('--finetune_test_dir',  type = str,     default = '/project/g/r13922043/hw1_data/p1_data/office/val')
-    parser.add_argument('--finetune_checkpoint',type = str,     default = '/project/g/r13922043/hw1_1/finetune_checkpoints_SettingB')
+    parser.add_argument('--finetune_checkpoint',type = str,     default = './hw1_1/finetune_checkpoints_SettingC')
 
-    # setting 
+    # setting C
     # pretrain model
     parser.add_argument('--pretrain',           type = bool,    default = True)
-    parser.add_argument('--TA_pretrain',        type = bool,    default = True)
-    parser.add_argument('--My_pretrain',        type = bool,    default = False)
+    parser.add_argument('--TA_pretrain',        type = bool,    default = False)
+    parser.add_argument('--My_pretrain',        type = bool,    default = True)
     # finetune model
     parser.add_argument('--freeze',             type = bool,    default = False)
     '''

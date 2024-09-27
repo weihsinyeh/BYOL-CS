@@ -14,3 +14,11 @@ class modelB(nn.Module):
         self.to(device)
     def forward(self, x) -> torch.Tensor:
         return self.model(x)
+
+def LoadModelB():
+    print("Load DeepLabv3")
+    modelB = torch.hub.load('pytorch/vision:v0.10.0', 'deeplabv3_resnet50', pretrained=True)
+    modelB.classifier = DeepLabHead(2048, 7)
+    modelB.aux_classifier = FCNHead(1024, 7)
+    modelB.eval()
+    return modelB

@@ -21,3 +21,6 @@ modelB_evaluation
 modelA_evaluation
 modelA_checkpoints*
 results
+checkpoint
+Pb2_evaluation
+Pb1_output.csv

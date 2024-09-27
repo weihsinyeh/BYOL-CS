@@ -29,3 +29,14 @@ If you have any problems related to HW1, you may
 - Use TA hours
 - Contact TAs by e-mail ([ntudlcv@gmail.com](mailto:ntudlcv@gmail.com))
 - Post your question to NTU COOL under HW1 Discussions
+
+## Command Use
+```shell
+$ bash hw1_download_ckpt.sh
+```
+```shell
+$ bash hw1_1.sh ./hw1_data/p1_data/office/val.csv ./hw1_data/p1_data/office/val PB1_output.csv
+```
+```shell
+$ bash hw1_2.sh ./hw1_data/p2_data/validation ./Pb2_evaluation
+```

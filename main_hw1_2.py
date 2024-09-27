@@ -53,14 +53,16 @@ def main():
     # Load model
     if config.modelA == True:
         model = modelA(config.device)
+        print("Model A")
     elif config.modelB == True:
         model = modelB(config.device)
+        print("Model B")
 
     # Loss function
     loss_function = nn.CrossEntropyLoss()
 
     # Optimizer
-    optim   = torch.optim.Adam(model.parameters(), lr=config.lr)
+    optim   = torch.optim.Adam(model.parameters(), lr=config.lr, eps = 1e-4)
     scaler  = torch.cuda.amp.GradScaler(enable_amp)
     total_epoch = 1000
     scheduler = GradualWarmupScheduler(
@@ -111,7 +113,6 @@ def main():
             scheduler.step()
             # scale loss
             scaler.scale(loss).backward()
-            # loss.backward()
             # scale step
             scaler.step(optim)
             scaler.update()

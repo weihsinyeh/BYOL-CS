@@ -32,7 +32,6 @@ class ImageFolderDataset(Dataset):
             self.root_dir   = config.data_dir
 
         self.transform      = config.data_transform
-        self.batch_size     = config.batch_size
         self.data_normalize = config.data_normalize
 
     def __len__(self):
@@ -66,5 +65,12 @@ def pretrain_dataloader(config):
     train_dataset       = ImageFolderDataset(config, finetune = False) 
     train_dataset, valid_dataset = random_split(train_dataset, [0.9, 0.1])                            
     train_data_loader   = DataLoader(train_dataset, batch_size=config.batch_size, num_workers=1, drop_last=False, shuffle=True)
-    valid_data_loader   = DataLoader(valid_dataset, batch_size=config.batch_size, num_workers=1, drop_last=False, shuffle=True)
+    valid_data_loader   = DataLoader(valid_dataset, batch_size=1, num_workers=1, drop_last=False, shuffle=True)
     return train_data_loader, valid_data_loader
+
+def evaluation_dataloader(config):
+    test_dataset        = ImageFolderDataset(config, finetune = True, train = False)
+    test_data_loader    = DataLoader(   test_dataset,
+                                        batch_size=1,
+                                        shuffle = False)
+    return test_data_loader

@@ -70,3 +70,6 @@ if __name__ == '__main__':
     labels = read_masks(args.labels)
     print(pred.shape, labels.shape)
     mean_iou_score(pred, labels)
+
+# Usage command :
+# python3 mean_iou_evaluate.py --labels './hw1_data/p2_data/validation' --pred './Pb2_evaluation'
