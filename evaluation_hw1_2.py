@@ -68,7 +68,7 @@ def main():
                 }
     for data in tqdm(val_loader):
         img     = data['img'].to(config.device)
-        mask    = data['mask'].to(config.device)
+        # mask    = data['mask'].to(config.device)
         name    = data['name']
         predict_feature = model(img)
         if config.modelA == True:

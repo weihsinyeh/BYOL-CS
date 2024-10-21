@@ -19,7 +19,8 @@ class ImageFolderDataset(Dataset):
         self.batch_size     = config.batch_size
         self.data_normalize = config.data_normalize
         self.sat_image      = sorted(glob.glob(os.path.join(self.root_dir, '*sat*')))
-        self.mask_images    = read_masks(self.root_dir)
+        if self.train == True:
+            self.mask_images    = read_masks(self.root_dir)
 
     def __len__(self):
         return len(self.sat_image)
@@ -28,9 +29,10 @@ class ImageFolderDataset(Dataset):
         data = dict()
         img_path            = self.sat_image[idx]
         img                 = Image.open(img_path).convert("RGB")
-        mask                = self.mask_images[idx]
+        if self.train == True:
+            mask                = self.mask_images[idx]
+            data['mask']        = torch.from_numpy(mask)
         data['img']         = self.data_normalize(img)
-        data['mask']        = torch.from_numpy(mask)
         data['name']        = os.path.basename(img_path)
         return data
     
